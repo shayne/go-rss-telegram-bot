@@ -223,12 +223,12 @@ func (b *Bot) fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, *AtomFee
 	}
 
 	var rssFeed RSSFeed
-	if err := xml.Unmarshal(body, &rssFeed); err == nil && rssFeed.Channel.Title != "" {
+	if err := xml.Unmarshal(body, &rssFeed); err == nil && (rssFeed.Channel.Title != "" || len(rssFeed.Channel.Items) > 0) {
 		return &rssFeed, nil, nil
 	}
 
 	var atomFeed AtomFeed
-	if err := xml.Unmarshal(body, &atomFeed); err == nil && atomFeed.Title != "" {
+	if err := xml.Unmarshal(body, &atomFeed); err == nil && len(atomFeed.Entries) > 0 {
 		return nil, &atomFeed, nil
 	}
 

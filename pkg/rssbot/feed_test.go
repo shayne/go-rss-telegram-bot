@@ -1,6 +1,9 @@
 package rssbot
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -210,5 +213,106 @@ func TestExtractAtomItems(t *testing.T) {
 
 	if items[1].Description != "Content 2" {
 		t.Errorf("Expected description 'Content 2', got '%s'", items[1].Description)
+	}
+}
+
+func TestFetchFeedWithEmptyTitle(t *testing.T) {
+	tests := []struct {
+		name        string
+		feedContent string
+		contentType string
+		wantRSS     bool
+		wantAtom    bool
+		wantErr     bool
+	}{
+		{
+			name: "Atom feed with empty title but entries",
+			feedContent: `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title></title>
+  <link href="https://example.com" rel="alternate"/>
+  <entry>
+    <title>Test Entry</title>
+    <link href="https://example.com/entry1"/>
+    <id>entry1</id>
+  </entry>
+</feed>`,
+			contentType: "application/atom+xml",
+			wantAtom:    true,
+			wantErr:     false,
+		},
+		{
+			name: "RSS feed with empty title but items",
+			feedContent: `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title></title>
+    <link>https://example.com</link>
+    <item>
+      <title>Test Item</title>
+      <link>https://example.com/item1</link>
+    </item>
+  </channel>
+</rss>`,
+			contentType: "application/rss+xml",
+			wantRSS:     true,
+			wantErr:     false,
+		},
+		{
+			name: "Atom feed with empty title and no entries",
+			feedContent: `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title></title>
+  <link href="https://example.com" rel="alternate"/>
+</feed>`,
+			contentType: "application/atom+xml",
+			wantErr:     true,
+		},
+		{
+			name: "RSS feed with empty title and no items",
+			feedContent: `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title></title>
+    <link>https://example.com</link>
+  </channel>
+</rss>`,
+			contentType: "application/rss+xml",
+			wantErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", tt.contentType)
+				w.Write([]byte(tt.feedContent))
+			}))
+			defer server.Close()
+
+			bot := &Bot{}
+			rssFeed, atomFeed, err := bot.fetchFeed(context.Background(), server.URL)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("fetchFeed() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantRSS && rssFeed == nil {
+				t.Error("Expected RSS feed but got nil")
+			}
+
+			if tt.wantAtom && atomFeed == nil {
+				t.Error("Expected Atom feed but got nil")
+			}
+
+			if !tt.wantRSS && rssFeed != nil {
+				t.Error("Expected no RSS feed but got one")
+			}
+
+			if !tt.wantAtom && atomFeed != nil {
+				t.Error("Expected no Atom feed but got one")
+			}
+		})
 	}
 }
