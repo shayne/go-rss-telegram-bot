@@ -22,12 +22,12 @@ type FeedItem struct {
 func (b *Bot) extractRSSItems(feed *RSSFeed) []FeedItem {
 	items := make([]FeedItem, 0, len(feed.Channel.Items))
 	for _, item := range feed.Channel.Items {
-		author := item.Author
+		author := strings.TrimSpace(item.Author)
 		if author == "" {
-			author = item.Creator
+			author = strings.TrimSpace(item.Creator)
 		}
 		items = append(items, FeedItem{
-			Title:       item.Title,
+			Title:       strings.TrimSpace(item.Title),
 			Link:        item.Link,
 			Author:      author,
 			GUID:        item.GUID,
@@ -52,9 +52,9 @@ func (b *Bot) extractAtomItems(feed *AtomFeed) []FeedItem {
 			content = entry.Content
 		}
 		items = append(items, FeedItem{
-			Title:       entry.Title,
+			Title:       strings.TrimSpace(entry.Title),
 			Link:        link,
-			Author:      entry.Author.Name,
+			Author:      strings.TrimSpace(entry.Author.Name),
 			GUID:        entry.ID,
 			Description: content,
 		})
@@ -63,7 +63,7 @@ func (b *Bot) extractAtomItems(feed *AtomFeed) []FeedItem {
 }
 
 func (b *Bot) sendFeedUpdate(ctx context.Context, sub *Subscription, item FeedItem) error {
-	title := html.UnescapeString(item.Title)
+	title := strings.TrimSpace(html.UnescapeString(item.Title))
 	feedTitle := html.UnescapeString(sub.FeedInfo.Title)
 
 	var messageText strings.Builder
@@ -77,7 +77,8 @@ func (b *Bot) sendFeedUpdate(ctx context.Context, sub *Subscription, item FeedIt
 	}
 
 	if item.Author != "" {
-		messageText.WriteString(fmt.Sprintf(" (author: %s)", escapeHTML(item.Author)))
+		author := strings.TrimSpace(item.Author)
+		messageText.WriteString(fmt.Sprintf(" (author: %s)", escapeHTML(author)))
 	}
 
 	messageText.WriteString("\n")
