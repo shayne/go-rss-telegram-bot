@@ -70,19 +70,13 @@ func (b *Bot) sendFeedUpdate(ctx context.Context, sub *Subscription, item FeedIt
 	messageText.WriteString(fmt.Sprintf("<b><u>%s</u></b>\n\n", escapeHTML(title)))
 	messageText.WriteString("via ")
 
-	if sub.FeedInfo.Link != "" {
-		messageText.WriteString(fmt.Sprintf("<a href=\"%s\">%s</a>", sub.FeedInfo.Link, escapeHTML(feedTitle)))
-	} else {
-		messageText.WriteString(escapeHTML(feedTitle))
-	}
+	// Link the feed title to the post URL
+	messageText.WriteString(fmt.Sprintf("<a href=\"%s\">%s</a>", item.Link, escapeHTML(feedTitle)))
 
 	if item.Author != "" {
 		author := strings.TrimSpace(item.Author)
 		messageText.WriteString(fmt.Sprintf(" (author: %s)", escapeHTML(author)))
 	}
-
-	messageText.WriteString("\n")
-	messageText.WriteString(fmt.Sprintf("<a href=\"%s\">%s</a>", item.Link, item.Link))
 
 	_, err := b.bot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    sub.ChatID,
