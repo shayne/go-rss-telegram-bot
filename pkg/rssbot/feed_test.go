@@ -216,6 +216,74 @@ func TestExtractAtomItems(t *testing.T) {
 	}
 }
 
+func TestGenerateParentURLs(t *testing.T) {
+	tests := []struct {
+		name     string
+		inputURL string
+		expected []string
+	}{
+		{
+			name:     "Deep path URL",
+			inputURL: "https://foo.com/bar/baz/post",
+			expected: []string{
+				"https://foo.com/bar/baz/post",
+				"https://foo.com/bar/baz",
+				"https://foo.com/bar",
+				"https://foo.com/",
+			},
+		},
+		{
+			name:     "Single path URL",
+			inputURL: "https://example.com/blog",
+			expected: []string{
+				"https://example.com/blog",
+				"https://example.com/",
+			},
+		},
+		{
+			name:     "Root URL",
+			inputURL: "https://example.com/",
+			expected: []string{
+				"https://example.com/",
+			},
+		},
+		{
+			name:     "URL without trailing slash",
+			inputURL: "https://example.com",
+			expected: []string{
+				"https://example.com",
+				"https://example.com/",
+			},
+		},
+		{
+			name:     "URL with query parameters",
+			inputURL: "https://example.com/blog/post?id=123",
+			expected: []string{
+				"https://example.com/blog/post?id=123",
+				"https://example.com/blog",
+				"https://example.com/",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := generateParentURLs(tt.inputURL)
+			if len(result) != len(tt.expected) {
+				t.Errorf("Expected %d URLs, got %d", len(tt.expected), len(result))
+				t.Errorf("Expected: %v", tt.expected)
+				t.Errorf("Got: %v", result)
+				return
+			}
+			for i, url := range result {
+				if url != tt.expected[i] {
+					t.Errorf("URL %d: expected %s, got %s", i, tt.expected[i], url)
+				}
+			}
+		})
+	}
+}
+
 func TestFetchFeedWithEmptyTitle(t *testing.T) {
 	tests := []struct {
 		name        string

@@ -58,6 +58,53 @@ type AtomEntry struct {
 }
 
 func (b *Bot) findAndParseFeed(ctx context.Context, urlStr string) (string, *FeedInfo, error) {
+	urlsToTry := generateParentURLs(urlStr)
+
+	for _, tryURL := range urlsToTry {
+		feedURL, feedInfo, err := b.tryFindFeedAtURL(ctx, tryURL)
+		if err == nil {
+			return feedURL, feedInfo, nil
+		}
+	}
+
+	return "", nil, fmt.Errorf("no valid RSS/Atom feed found")
+}
+
+func generateParentURLs(urlStr string) []string {
+	parsedURL, err := url.Parse(urlStr)
+	if err != nil {
+		return []string{urlStr}
+	}
+
+	var urls []string
+	urls = append(urls, urlStr)
+
+	path := parsedURL.Path
+	for path != "" && path != "/" {
+		lastSlash := strings.LastIndex(path, "/")
+		if lastSlash <= 0 {
+			break
+		}
+		path = path[:lastSlash]
+
+		parentURL := *parsedURL
+		parentURL.Path = path
+		parentURL.RawQuery = ""
+		parentURL.Fragment = ""
+		urls = append(urls, parentURL.String())
+	}
+
+	if parsedURL.Path != "/" {
+		rootURL := *parsedURL
+		rootURL.Path = "/"
+		rootURL.RawQuery = ""
+		rootURL.Fragment = ""
+		urls = append(urls, rootURL.String())
+	}
+
+	return urls
+}
+func (b *Bot) tryFindFeedAtURL(ctx context.Context, urlStr string) (string, *FeedInfo, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
@@ -115,7 +162,7 @@ func (b *Bot) findAndParseFeed(ctx context.Context, urlStr string) (string, *Fee
 		}
 	}
 
-	return "", nil, fmt.Errorf("no valid RSS/Atom feed found")
+	return "", nil, fmt.Errorf("no valid RSS/Atom feed found at %s", urlStr)
 }
 
 func parseFeedData(data []byte) (*FeedInfo, error) {
